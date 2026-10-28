@@ -1,0 +1,72 @@
+THE PROJECT IN PLAIN WORDS
+
+THE QUESTION
+Forecasters think the key thing about a block is how long it stays. So: does a long block bring
+a heatwave? And if a heatwave comes, does the block tell us how hot, long or large it will be?
+
+THE DATA
+Two lists from the paper: blocks, and heatwaves with the blocks linked to them (a block and a
+heatwave are linked if they overlap, with the block up to two days earlier). The project turns
+this into one row per block: its persistence, size, strength, place, time of year, recurrence,
+and the heatwave it brought (if any).
+
+THE TOOLS
+Linear regression: one formula, answer = a x persistence + b x size + ... + constant.
+Logistic regression: the same, for yes/no questions. The answer is a chance, 0 to 100%.
+Random forest: a game of 20 questions ("lasts over 10 days? north of 60N?"). Each chain of
+  answers leads to a group of similar past blocks, and the prediction is what they did. 500 such
+  trees are averaged.
+Fair test: the model never sees the summer it is asked about, like an exam with new questions.
+
+THE SCORES
+Pair test: pick one block with a heatwave and one without. How often does the model give the
+  heatwave block the higher chance? 50% = pure guessing (like flipping a coin), 100% = perfect.
+R2: how much of the differences between heatwaves the model explains. 0 = no better than
+  guessing the average. 1 = perfect. Negative = worse than guessing.
+
+THE THREE STEPS
+1. Build the table, one row per block.
+2. The study. Part 1 counts: how often does each persistence class bring a heatwave? Part 2 asks
+   the computer: does knowing more than the persistence help?
+3. Pick a date. Which blocks existed, how likely was each to bring a heatwave, what happened?
+
+THE THREE FIGURES
+(The numbers come from the latest runs. Check them against your final catalogue.)
+Figure 1 (counting): of the blocks that last up to 6 days, 8% brought a heatwave. Of the blocks
+  that last over 15 days, 31% did. The dashed line is the average of all blocks (15%).
+Figure 2 (machine-learning models):
+  (a) The lines show the chance that a block brings a heatwave, as a function of blocking
+      persistence, from the two models. The ticks at the top are blocks that brought a heatwave,
+      the ticks at the bottom blocks that did not. The legend gives the pair test: the model sees
+      one block with and one without a heatwave and must say which is which. Guessing is right
+      half of the time (50%). Knowing only the persistence: 59% (logistic regression) and 56%
+      (random forest). Knowing all block properties: 64% and 68%.
+      50% is NOT the chance that a block brings a heatwave. That chance is about 15%.
+  (b) How much of the differences between heatwaves the models explain (R2). The red area means
+      worse than guessing the average. Persistence alone explains nothing about the heatwave's
+      intensity, duration or area. All block properties together explain about 17% of the
+      intensity and 24% of the area, and nothing of the duration.
+Figure 3 (counting): for the blocks that brought a heatwave, the median intensity, duration and
+  area of the heatwave in each persistence class. The bars are about equally high: the heatwave
+  looks the same whatever the block persistence.
+
+WHAT THE RESULTS SAY
+- 15% of summer blocks come with a heatwave. More persistent blocks do more often: 8% up to
+  6 days, 31% over 15 days.
+- Persistence alone picks the right block in 59% of pairs (guessing: 50%). All block properties
+  together: 64% to 68%. So persistence helps, and size, strength and position add a little.
+- Once a heatwave comes, persistence says nothing about its intensity, duration or area. All
+  block properties together explain about 17% of the intensity and 24% of the area, and none of
+  the duration.
+- 27 June 2021: of three blocks, the model gave the highest chance (38%) to the one over North
+  America, which brought the Pacific Northwest heatwave.
+
+THE MESSAGE
+How long a block lasts is linked to WHETHER a heatwave comes, not to WHAT IT IS LIKE. This
+agrees with the paper. Intensity, duration and area need other ingredients: soil moisture,
+surface fluxes, subtropical ridges, local processes.
+
+LIMITS
+- Longer blocks have more time to meet a heatwave by chance, so part of the link is expected.
+- Only about 120 blocks came with a heatwave, so the heatwave results are rough.
+- The numbers depend on the detection settings. Block persistence is assumed known.

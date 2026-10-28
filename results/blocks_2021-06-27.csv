@@ -1,0 +1,4 @@
+No.,Block ID,Dates,Lat,Lon,Region,Days,Size,PV,Chance (%),Expected K,Expected d,ERA5: heatwaves,ERA5 K,ERA5 d
+1,58334,22 Jun-06 Jul,59,-11,Europe,14.75,4.0,-1.9,14,9.4,5.7,0,-,-
+2,58373,23 Jun-28 Jun,80,-11,Europe,5.5,0.9,-1.6,6,8.2,5.8,0,-,-
+3,58390,24 Jun-12 Jul,58,-81,North America,18.5,4.4,-2.0,27,11.0,5.8,1,11.9,8.25
