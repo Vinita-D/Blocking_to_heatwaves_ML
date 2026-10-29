@@ -64,13 +64,16 @@ guessing gives 50%. Knowing all block properties raises this to 64% and 68%. Per
 about 5 days in every persistence class.
 ![Figure 3](results/fig3_heatwave.png)
 
-**Predict the heatwave: 27 June 2021.** Of the three blocks active that day, the model gave the highestchance  (38%) to the block over North America, the one that brought the Pacific Northwest heatwave. The heatwave was west of the block, a non-local link. The Atlantic block (16% chance) also brought a heatwave, a long one of 14 days.
+**Try it on a real day: 27 June 2021.** The model found 3 blocks that day. It gave the highest
+chance to the block over North America, the one that brought the record Pacific Northwest
+heatwave.
 
-| No. | Block ID | Dates | Lat | Lon | Region | Persistence (d) | Size (10⁶ km²) | PV | Heatwave chance | Expected intensity (K) | Expected duration (d) | ERA5 heatwaves | ERA5 intensity (K) | ERA5 duration (d) |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 58334 | 22 Jun–6 Jul | 59°N | 11°W | Europe | 14.75 | 4.0 | −1.9 | 14% | 9.4 | 5.7 | 0 | – | – |
-| 2 | 58373 | 23–28 Jun | 80°N | 11°W | Europe | 5.50 | 0.9 | −1.6 | 6% | 8.2 | 5.8 | 0 | – | – |
-| **3** | **58390** | **24 Jun–12 Jul** | **58°N** | **81°W** | **North America** | **18.50** | **4.4** | **−2.0** | **27%** | **11.0** | **5.8** | **1** | **11.9** | **8.25** |
+| North American block | ML prediction | Real (ERA5) |
+|---|---|---|
+| Chance of a heatwave | 27% (highest of the 3) | heatwave occurred |
+| Heatwave intensity | 11.0 K | 11.9 K |
+| Heatwave duration | 5.8 days | 8.25 days |
+
 
 *PV = most negative PV anomaly. Expected = if a heatwave comes.*
 
