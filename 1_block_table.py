@@ -1,5 +1,6 @@
 """
-Step 1. Make one row per block, with its properties and the heatwave that came with it.
+blocking and heatwaves are detected with the catelogue of thier properties
+this code makes a new catelogue with the previously loaded data to give information of each blocking that was associated with heatwave
 """
 import numpy as np
 import pandas as pd

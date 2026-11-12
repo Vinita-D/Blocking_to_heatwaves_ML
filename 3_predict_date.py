@@ -16,7 +16,7 @@ from sklearn.base import clone
 from common import OUT, BLOCK_FEATURES, CLASSIFIERS, REGRESSORS, load_table, region_of
 
 # ============================================================================ settings
-DATE = '2021-06-27'                  # the date to look at (YYYY-MM-DD)
+DATE = '2003-06-27'                  # the date to look at (YYYY-MM-DD)
 WINDOW_DAYS = 0                      # 0 = blocks active on that exact date; 3 = within 3 days
 
 
