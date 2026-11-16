@@ -114,7 +114,22 @@ heatwave was west of the blocking, a non-local link. The Atlantic blocking (14% 
 | Heatwave duration | 5.8 days | 8.25 days |
 
 *Of the three blocking active that day, the other two (Atlantic, 14% and 6%) brought no heatwave.*
+## Settings
 
+No hyperparameter tuning was done. Models use scikit-learn defaults except where listed.
+All settings are in `common.py`.
+| | Setting |
+|---|---|
+| ML-regression, yes/no (does a heatwave occur?) | Logistic regression, inputs standardised, `max_iter=1000`, default L2 penalty (C = 1) |
+| ML-regression, numbers (intensity, duration, area) | Linear regression, inputs standardised |
+| ML-forest (classifier and regressor) | 500 trees, at least 5 blocks per leaf, `random_state=42` |
+| Fair test | 5-fold cross-validation; whole summers are held out together (seed 42) |
+| Block properties used | persistence, size, strength (min PV), latitude, longitude (sine and cosine), day of year |
+| Heatwave properties predicted | occurrence (yes/no), maximum intensity, duration, maximum area |
+| Chance level | Simplified association rule: circles enlarged by 1.2, block seen 1–2 days before the heatwave, at least 4 six-hourly steps of overlap |
+| Uncertainty | Bootstrap over blocks, 500 resamples (gain from adding persistence to the chance level) |
+
+The minimum leaf size of 5 keeps the forest from fitting noise, because only about 120 blocks came with a heatwave.
 
 
 ## Blocking to heatwaves!!!
