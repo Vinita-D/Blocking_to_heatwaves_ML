@@ -1,14 +1,19 @@
 """
 Blocking persistence and heatwaves: a simple machine-learning diagnostic.
 
-Part 1  persistence of blocking leads to more heatwave occurrences or is it just by chance 
+Part 1  Does the persistence of a blocking lead to more heatwaves, or is it just chance?
         A longer blocking has more time steps in which a heatwave could occur, even if the two are unrelated.
-        So the chnaces are computed by counting how often it would meet a heatwave same place same location but for other years summer
+        So the chance level is computed by counting how often the blocking would meet the heatwaves of the
+        OTHER summers (same places and same calendar dates, but unrelated to it).
 
-Part 2  Machine learning. Linear/logistic regression and random forest are trained on the blocking-heatwave
-        catalogue, and tested on summers they never saw ("fair test").
+Part 2  Machine learning. Logistic/linear regression, random forest and gradient boosting are trained on the
+        blocking-heatwave catalogue and tested on summers they never saw ("fair test").
+        The fair test is repeated with 30 different splits of the summers (mean and spread).
         Scores:
-
+          pair test (= ROC AUC)  take one blocking with a heatwave and one without. How often does the model
+                                 give the heatwave blocking the higher chance? (50% = guessing)
+          R2                     for the heatwaves: share of the differences in intensity, duration and area
+                                 that is explained (0 = no better than guessing the average)
 """
 import numpy as np
 import pandas as pd
@@ -20,7 +25,8 @@ from sklearn.base import clone
 from sklearn.metrics import r2_score, roc_auc_score
 
 from common import (OUT, BLOCK_FEATURES, HW_TARGETS, CLASSIFIERS, REGRESSORS, load_table, predict_unseen,
-                    add_chance_level, unseen_summer_folds)
+                    add_chance_level, ALL_CLASSIFIERS, ALL_REGRESSORS, unseen_summer_folds)
+
 
 CLASS_EDGES = [0, 6, 10, 15, 100]
 CLASS_NAMES = ['up to 6 d', '6 to 10 d', '10 to 15 d', 'over 15 d']
@@ -29,7 +35,11 @@ CHANCE_SETS = {'chance level only': ['chance_logit'], 'chance + persistence': ['
 SINGLE = {'persistence': ['lifetime_days'], 'size': ['max_size_1e6km2'], 'strength (PV)': ['min_pv'],
           'position': ['lat', 'lon_sin', 'lon_cos'], 'time of year': ['doy']}
 MODEL_COLORS = {'logistic regression': ('#6baed6', 'ML-regression'), 'random forest': ('#fd8d3c', 'ML-forest')}
+SUMMARY_COLORS = {'logistic regression': ('#3b8bc2', 'ML-regression'),
+                  'random forest': ('#e8812c', 'ML-forest'),
+                  'gradient boosting': ('#4c9f70', 'ML-boosting')}
 PURPLE, GOLD, RED = '#7a56b5', '#f0b429', '#d1495b'
+N_SEEDS = 30     # the summers are split into test groups 30 different ways
 
 
 # ============================================================================ numbers
@@ -49,7 +59,7 @@ def counting(t):
 
 
 def machine_learning(t):
-    """pair test for 'does a blocking bring a heatwave', R2 for 'what is the heatwave like'."""
+    """Pair test for 'does a blocking bring a heatwave', R2 for 'what is the heatwave like' (one split, seed 42)."""
     y, years = t['heatwave'].values, t['year'].values
     pair, pred = {}, {}
     for info, feats in {**INFORMATION, **CHANCE_SETS}.items():
@@ -66,6 +76,30 @@ def machine_learning(t):
     return pair, r2, pred
 
 
+def repeat_over_seeds(t):
+    """Repeat the fair test with 30 different splits of the summers: mean and spread of every score."""
+    y, years = t['heatwave'].values, t['year'].values
+    auc, r2s = {}, {}
+    print(f'REPEATED FAIR TEST: {N_SEEDS} different splits of the summers (mean ± spread)\n')
+    print('Does a blocking bring a heatwave? Pair test (= ROC AUC) in %')
+    for info, feats in INFORMATION.items():
+        for name, model in ALL_CLASSIFIERS.items():
+            s = [roc_auc_score(y, predict_unseen(model, t[feats].values, y, years, proba=True, seed=k)) * 100
+                 for k in range(N_SEEDS)]
+            auc[(info, name)] = (np.mean(s), np.std(s))
+            print(f'  {info:22s} {name:20s} {np.mean(s):.0f} ± {np.std(s):.1f}')
+    h = t[t['heatwave'] == 1]
+    print('\nWhat is the heatwave like? R2, all blocking properties')
+    for target, label in HW_TARGETS.items():
+        for name, model in ALL_REGRESSORS.items():
+            s = [r2_score(h[target], predict_unseen(model, h[list(BLOCK_FEATURES)].values, h[target].values,
+                                                    h['year'].values, seed=k)) for k in range(N_SEEDS)]
+            r2s[(target, name)] = (np.mean(s), np.std(s))
+            print(f'  {label:36s} {name:20s} {np.mean(s):+.2f} ± {np.std(s):.2f}')
+    print()
+    return auc, r2s
+
+
 def one_property_at_a_time(t):
     """Pair test with one blocking property at a time."""
     y, years = t['heatwave'].values, t['year'].values
@@ -75,8 +109,9 @@ def one_property_at_a_time(t):
     return pd.DataFrame(rows).T
 
 
-
+# ============================================================================ figures
 def fig_chance(t):
+    """Figure 1: do longer blockings meet more heatwaves, or is it just chance?"""
     life, hw = t['lifetime_days'], t['heatwave']
     days = [d for d in range(int(np.ceil(life.min())), 31) if (life >= d).sum() >= 10]
     n = np.array([(life >= d).sum() for d in days])
@@ -92,14 +127,14 @@ def fig_chance(t):
     for d in (10, 15):
         if d in days:
             ax.text(d, share[days.index(d)] + 0.6, f'{share[days.index(d)]:.0f}%', ha='center', fontsize=12)
-    ax.text(0.02, 0.80, f'Blocking lead to heatwave {ratio.min():.1f} to {ratio.max():.1f} times more\n'
+    ax.text(0.02, 0.80, f'Blocking leads to heatwaves {ratio.min():.1f} to {ratio.max():.1f} times more\n'
                         'often than chance, at every length', transform=ax.transAxes, fontsize=10)
     if (n < 30).any():
-        ax.text(0.99, 0.04, 'pale bars: fewer than 30 blocking', transform=ax.transAxes, ha='right', fontsize=8, color='#555555')
+        ax.text(0.99, 0.04, 'pale bars: fewer than 30 blockings', transform=ax.transAxes, ha='right', fontsize=8, color='#555555')
     ax.set_xticks([d for d in days if d % 5 == 0])
     ax.set_ylim(0, share.max() * 1.25)
-    ax.set_xlabel('Blocking persistece (days)')
-    ax.set_ylabel('Blocking associated to heatwave (%)')
+    ax.set_xlabel('Blocking persistence (days)')
+    ax.set_ylabel('Blocking associated with a heatwave (%)')
     ax.set_title('Longer blocking meets more heatwaves, but chance explains much of it', loc='left', fontsize=11)
     ax.legend(frameon=False, loc='upper left')
     fig.tight_layout()
@@ -186,9 +221,6 @@ def fig_occurrence(one, pair):
     ax.text(50.3, len(rows) - 0.45, 'guessing', fontsize=9, va='bottom')
     ax.set_yticks(y)
     ax.set_yticklabels(rows.index)
-    for lab in ax.get_yticklabels():
-        if lab.get_text().startswith(('chance level', 'all blocking')):
-            lab.set_fontweight('bold')
     ax.set_xlim(45, max(72, rows.values.max() + 5))
     ax.set_xlabel('Pair test (%): how often the model picks the blocking that brought the heatwave')
     ax.set_title('Which information tells whether a blocking brings a heatwave?', loc='left', fontsize=11)
@@ -224,6 +256,55 @@ def fig_severity(r2):
     plt.close(fig)
 
 
+def fig_summary(auc, r2, chance, targets):
+    """Figure 5: (a) does blocking bring a heatwave? (b) what is the heatwave like?
+    Points: mean over the repeated splits of the summers; bars: spread."""
+    rows = [('persistence only', 'Persistence only'), ('all block properties', 'All blocking\nproperties')]
+    names = {'hw_max_intensity': 'Intensity', 'hw_duration_days': 'Duration', 'hw_max_area_1e6': 'Area'}
+    with plt.rc_context({'axes.spines.top': False, 'axes.spines.right': False,
+                         'xtick.labelsize': 16, 'ytick.labelsize': 16}):
+        fig, (ax, bx) = plt.subplots(1, 2, figsize=(16, 6), dpi=150, gridspec_kw={'width_ratios': [1.1, 1]})
+
+        # (a) occurrence: pair test (= ROC AUC)
+        ax.axvline(50, color='black', ls='--', lw=1)
+        ax.axvspan(chance - 1, chance + 1, color='#bbbbbb', alpha=0.5, lw=0)
+        ax.text(chance, -0.72, 'chance level only', ha='center', va='top', fontsize=14, color='#555555')
+        for r, (info, label) in enumerate(rows):
+            for k, (m, (c, name)) in enumerate(SUMMARY_COLORS.items()):
+                mean, sd = auc[(info, m)]
+                y = r + (k - 1) * 0.22
+                ax.errorbar(mean, y, xerr=sd, fmt='o', color=c, ms=11, capsize=5, lw=2.5,
+                            label=name if r == 0 else None)
+                ax.text(mean + sd + 0.6, y, f'{mean:.0f}', va='center', fontsize=14, color=c)
+        ax.set_yticks([0, 1])
+        ax.set_yticklabels([l for _, l in rows])
+        ax.set_ylim(1.5, -0.85)
+        ax.set_xlim(46, 72)
+        ax.set_xlabel('Pair test = ROC AUC (%)', fontsize=18)
+        ax.set_title('(a) Does blocking bring a heatwave?', loc='left', fontsize=18)
+        ax.legend(loc='lower left', bbox_to_anchor=(0.2, 0.0), frameon=False, fontsize=15)
+        ax.grid(axis='x', alpha=0.25)
+
+        # (b) severity: R2
+        bx.axvline(0, color='black', lw=1)
+        bx.axvspan(-0.8, 0, color='#f4cccc', alpha=0.5, lw=0)
+        bx.text(-0.78, -0.72, 'worse than guessing the average', fontsize=14, color='#a33', va='top')
+        for r, tg in enumerate(targets):
+            for k, (m, (c, name)) in enumerate(SUMMARY_COLORS.items()):
+                mean, sd = r2[(tg, 'linear regression' if m == 'logistic regression' else m)]
+                bx.errorbar(mean, r + (k - 1) * 0.22, xerr=sd, fmt='o', color=c, ms=11, capsize=5, lw=2.5)
+        bx.set_yticks(range(len(targets)))
+        bx.set_yticklabels([names[t] for t in targets])
+        bx.set_ylim(len(targets) - 0.45, -0.85)
+        bx.set_xlim(-0.8, 0.4)
+        bx.set_xlabel('Explained share of heatwave differences ($R^2$)', fontsize=18)
+        bx.set_title('(b) What is the heatwave like?', loc='left', fontsize=18)
+        bx.grid(axis='x', alpha=0.25)
+        fig.tight_layout()
+        fig.savefig(OUT / 'fig5_summary.png', bbox_inches='tight')
+        plt.close(fig)
+
+
 # ============================================================================ run
 def main():
     OUT.mkdir(exist_ok=True)
@@ -234,11 +315,12 @@ def main():
     table.to_csv(OUT / 'by_lifetime.csv')
 
     pair, r2, pred = machine_learning(t)
+    auc, r2s = repeat_over_seeds(t)
     print('PART 2a. Does a blocking bring a heatwave? Pair test in % (50 = coin toss)\n')
     infos = {**INFORMATION, **CHANCE_SETS}
     print(pd.DataFrame({m: {i: round(pair[(i, m)]) for i in infos} for m in CLASSIFIERS}).to_string(), '\n')
     y, rng = t['heatwave'].values, np.random.default_rng(0)
-    print('Gain from adding persistence to the chance level (pair-test points, 95% range, bootstrap over blocking):')
+    print('Gain from adding persistence to the chance level (pair-test points, 95% range, bootstrap over blockings):')
     for m in CLASSIFIERS:
         g = []
         for _ in range(500):
@@ -260,8 +342,10 @@ def main():
     fig_training(t)
     fig_occurrence(one, pair)
     fig_severity(r2)
+    chance = np.mean([pair[('chance level only', m)] for m in CLASSIFIERS])
+    fig_summary(auc, r2s, chance, list(HW_TARGETS))
     print(f'written {OUT / "by_lifetime.csv"} and the figures fig1_persistence, fig2_training, '
-          f'fig3_occurrence, fig4_severity in {OUT}/')
+          f'fig3_occurrence, fig4_severity, fig5_summary in {OUT}/')
 
 
 if __name__ == '__main__':

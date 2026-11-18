@@ -60,6 +60,8 @@ blocking is computed. It is then saved in `data/block_chance.csv`.
   their usual times and places but had nothing to do with that blocking. Each blocking is paired with the
   heatwaves of the *other* summers: realistic, but unrelated to it. A longer blocking meets more of them
   just because it lasts longer.
+- **ML-boosting** (gradient boosting) builds small trees one after the other, each one correcting the mistakes
+  of the previous ones. It is used as a third check and is not better than the forest here.
 
 ## Results
 
@@ -84,28 +86,24 @@ chance of a heatwave from the training blocking (b), and is then tested on block
 
 ![Figure 2](results/fig2_training.png)
 
-**3. Persistence tells whether a heatwave occurs, but so does the chance level.** Knowing only the persistence,
-the models pick the right blocking in 59% (ML-regression) and 56% (ML-forest) of pairs; guessing gives 50%.
-Knowing only the chance level gives 62% and 60%, and adding persistence to it raises the score by about 3
-points (95% range 0 to +6 for the regression, −3 to +9 for the forest), which is within the uncertainty. All
-blocking properties together give 64% and 67%. Taken one at a time, size (61%), persistence (59%) and position
-(58%) tell the most; time of year (55%) and strength (PV anomaly, 53%) little. Size and persistence are partly
-built into the association: a larger blocking has a larger circle, and a longer blocking more time steps, to
-meet a heatwave.
+**3. Persistence tells whether a heatwave occurs, but so does the chance level.** All scores are the mean
+and spread over 30 different splits of the summers (Figure 3, left). Knowing only the persistence, the models pick
+the right blocking in 62 ± 1.4% (ML-regression) and 54 ± 1.7% (ML-forest) of pairs; guessing gives 50%.
+The chance level alone gives about 60%, and adding persistence to it raises the score by +3.6 points
+for the regression (95% range +0.6 to +6.7) and cannot be told apart from zero for the forest (−2.9 to +8.8).
+All blocking properties together give 66% for both ML-regression and ML-forest; ML-boosting gives 63 ± 1.9%.
+Taken one at a time (best of the two models), size (61%), persistence (59%) and position (57%) tell the most;
+time of year (56%) and strength (PV anomaly, 54%) little. Size and persistence are partly built into the
+association: a larger blocking has a larger circle, and a longer blocking more time steps, to meet a heatwave.
 
-![Figure 3](results/fig3_occurrence.png)
+![Figure 3](results/fig5_summary.png)
+![Figure 3b](results/fig3_occurrence.png)
 
-**4. Persistence does not tell us the properties of the heatwave.** Persistence alone explains nothing of the
-heatwave's intensity, duration or area (the score is below zero, worse than guessing the average). All
-blocking properties together explain about 17% of the intensity and 24% of the area, and nothing of the
-duration. The heatwave looks the same whatever the blocking persistence: the median duration is about 5 days
-in every persistence class.
-
-![Figure 4](results/fig4_severity.png)
-
-**Predict the heatwave: 27 June 2021.** Of the three blocking active that day, the model gave the highest
-chance (27%) to the blocking over North America, the one that brought the Pacific Northwest heatwave. The
-heatwave was west of the blocking, a non-local link. The Atlantic blocking (14% chance) brought no heatwave.
+**4. Blocking properties do not tell us how severe the heatwave is.** Persistence alone explains nothing of the
+heatwave's intensity, duration or area. All blocking properties together explain about 11% of the intensity
+and 16% of the area (ML-forest), and nothing of the duration (Figure 3, right). ML-boosting is worse than
+guessing the average. The heatwave looks the same whatever the blocking persistence: the median duration is
+about 5 days in every persistence class.
  
 | North American blocking | ML prediction | Real (ERA5) |
 |---|---|---|
@@ -115,6 +113,24 @@ heatwave was west of the blocking, a non-local link. The Atlantic blocking (14% 
 
 *Of the three blocking active that day, the other two (Atlantic, 14% and 6%) brought no heatwave.*
 
+## Settings
+
+No hyperparameter tuning was done. Models use scikit-learn defaults except where listed.
+All settings are in `common.py`.
+
+| | Setting |
+|---|---|
+| ML-regression, yes/no (does a heatwave occur?) | Logistic regression, inputs standardised, `max_iter=1000`, default L2 penalty (C = 1) |
+| ML-regression, numbers (intensity, duration, area) | Linear regression, inputs standardised |
+| ML-forest (classifier and regressor) | 500 trees, at least 5 blocking per leaf, `random_state=42` |
+| ML-boosting (classifier and regressor) | Gradient boosting, trees of depth 3, learning rate 0.05, 200 steps, at least 10 per leaf |
+| Fair test | 5 groups of summers; whole summers are held out together. Repeated with 30 different splits |
+| Blocking properties used | persistence, size, strength (min PV), latitude, longitude (sine and cosine), day of year |
+| Heatwave properties predicted | occurrence (yes/no), maximum intensity, duration, maximum area |
+| Chance level | Simplified association rule: circles enlarged by 1.2, blocking seen 1–2 days before the heatwave, at least 4 six-hourly steps of overlap |
+| Uncertainty | Spread over the 30 splits; bootstrap over blockings, 500 resamples (gain from adding persistence to the chance level) |
+
+Only 98 blocking events came with a heatwave, so the settings are kept simple to avoid fitting noise.
 
 
 ## Blocking to heatwaves!!!
@@ -132,3 +148,4 @@ processes.
 - Only about 120 blocks came with a heatwave, so the heatwave results are rough.
 ````
 ````
+

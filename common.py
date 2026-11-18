@@ -159,4 +159,28 @@ def add_chance_level(t):
         t[['Flag_BLK', 'chance']].to_csv(CHANCE_CSV, index=False)
     c = np.clip(t['chance'], 1e-3, 1 - 1e-3)
     t['chance_logit'] = np.log(c / (1 - c))                  # the form the models use
+
     return t
+
+
+
+
+from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostingRegressor
+
+# extra model for the comparison; the figures keep using CLASSIFIERS / REGRESSORS above
+_boost = dict(max_depth=3, learning_rate=0.05, max_iter=200, min_samples_leaf=10, random_state=SEED)
+ALL_CLASSIFIERS = {**CLASSIFIERS, 'gradient boosting': HistGradientBoostingClassifier(**_boost)}
+ALL_REGRESSORS = {**REGRESSORS, 'gradient boosting': HistGradientBoostingRegressor(**_boost)}
+
+
+
+
+
+
+
+
+
+
+
+
+
